@@ -1,0 +1,43 @@
+---
+- name: Install openvpn packages
+  apt:
+    name: "{{item}}"
+    update_cache: yes
+  become: true
+  with_items:
+    - openvpn
+    - easy-rsa
+
+- name: Create CA directory
+  command: make-cadir /home/{{admin_user}}/openvpn-ca
+  become: "{{admin_user}}"
+  args:
+    creates: /home/{{admin_user}}/openvpn-ca
+
+- name: Edit vars
+  template:
+    src: vars.j2
+    dest: /home/{{admin_user}}/openvpn-ca/vars
+    owner: "{{admin_user}}"
+    group: "{{admin_user}}"
+    mode: 0644
+
+- name: Copy build CA script
+  copy:
+    src: build_ca.sh
+    dest: /home/{{admin_user}}/openvpn-ca
+    owner: "{{admin_user}}"
+    group: "{{admin_user}}"
+    mode: 0770
+
+- name: Ensure clean environment and build CA, certs and DH params
+  shell: ./build_ca.sh
+  args:
+    chdir: /home/{{admin_user}}/openvpn-ca
+  tags:
+    - rebuild-root-ca
+
+- name: Strengthen server's TLS integrity verification
+  command: openvpn --genkey --secret keys/ta.key
+  args:
+    chdir: /home/{{admin_user}}/openvpn-ca

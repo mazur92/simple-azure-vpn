@@ -2,3 +2,6 @@
 *.tfstate
 *.tfstate.backup
 variables.tf
+*.retry
+inventory.yml
+ansible/roles/root_ca/defaults/main.yml
