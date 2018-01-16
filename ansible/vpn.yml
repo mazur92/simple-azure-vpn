@@ -2,4 +2,4 @@
  - name: Set up VPN in Azure
    hosts: all
    roles:
-    - root_ca
+    - openvpn
