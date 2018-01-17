@@ -6,6 +6,7 @@ key_city:
 key_org: 
 key_email: 
 key_ou: 
-key_name: 
+key_name:
+vm_public_ip: 
 vpn_users:
   - client1

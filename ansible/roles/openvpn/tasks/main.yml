@@ -148,3 +148,54 @@
     name: openvpn@server
     enabled: yes
     state: started
+
+- name: Create client configs directory
+  file:
+    path: /home/{{admin_user}}/client-configs
+    state: directory
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: Create client configs output directory
+  file:
+    path: /home/{{admin_user}}/client-configs/files
+    state: directory
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: Create base config
+  template:
+    src: base.conf.j2
+    dest: /home/{{admin_user}}/client-configs/base.conf
+  tags:
+     - test 
+
+- name: Create make_config.sh script
+  template:
+    src: make_config.sh.j2
+    dest: /home/{{admin_user}}/client-configs/make_config.sh
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  tags:
+    - test
+
+- name: Build client configs
+  shell: /home/{{admin_user}}/client-configs/make_config.sh "{{item}}"
+  with_items: "{{ vpn_users }}"
+  tags:
+   - regenerate-clients
+   - test
+
+- name: Fetch client configs (for nixes)
+  fetch:
+    src: /home/{{admin_user}}/client-configs/files/{{item}}.ovpn
+    dest: /tmp/ovpn_configs/
+    fail_on_missing: yes
+  with_items: "{{ vpn_users }}"
+  when: ansible_os_family != "Windows"
+  tags:
+    - regenerate-clients
+    - test
