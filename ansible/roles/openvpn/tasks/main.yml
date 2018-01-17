@@ -1,0 +1,201 @@
+---
+- name: Install openvpn packages
+  apt:
+    name: "{{item}}"
+    update_cache: yes
+  become: true
+  with_items:
+    - openvpn
+    - easy-rsa
+
+- name: Create CA directory
+  command: make-cadir /home/{{admin_user}}/openvpn-ca
+  become: "{{admin_user}}"
+  args:
+    creates: /home/{{admin_user}}/openvpn-ca
+
+- name: Edit vars
+  template:
+    src: vars.j2
+    dest: /home/{{admin_user}}/openvpn-ca/vars
+    owner: "{{admin_user}}"
+    group: "{{admin_user}}"
+    mode: 0644
+  tags:
+    - rebuild-root-ca
+
+- name: Copy build CA script
+  copy:
+    src: build_ca.sh
+    dest: /home/{{admin_user}}/openvpn-ca
+    owner: "{{admin_user}}"
+    group: "{{admin_user}}"
+    mode: 0770
+
+- name: Ensure clean environment and build CA, certs and DH params
+  shell: ./build_ca.sh
+  args:
+    chdir: /home/{{admin_user}}/openvpn-ca
+  tags:
+    - rebuild-root-ca
+    - clean-ca
+
+- name: Strengthen server's TLS integrity verification
+  command: openvpn --genkey --secret keys/ta.key
+  args:
+    chdir: /home/{{admin_user}}/openvpn-ca
+
+- name: Copy client_key_cert script
+  copy:
+    src: client_key_cert.sh
+    dest: /home/{{admin_user}}/openvpn-ca
+    owner: "{{admin_user}}"
+    group: "{{admin_user}}"
+    mode: 0770
+
+- name: Create clients' keys and certs
+  shell: ./client_key_cert.sh "{{ item }}"
+  args:
+    chdir: /home/{{admin_user}}/openvpn-ca
+  with_items: "{{ vpn_users }}"
+  tags:
+    - regenerate-clients
+
+- name: Copy CA files to OpenVPN dir
+  become: true
+  copy:
+    src: /home/{{admin_user}}/openvpn-ca/keys/{{item}}
+    dest: /etc/openvpn
+    remote_src: yes
+  with_items:
+    - ca.crt
+    - ta.key
+    - dh2048.pem
+    - "{{ key_name }}.crt"
+    - "{{ key_name }}.key"
+  tags:
+    - rebuild-root-ca
+
+- name: Prepare OpenVPN server.conf
+  become: true
+  template:
+    src: server.conf.j2
+    dest: /etc/openvpn/server.conf
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Allow IP forwarding
+  become: true
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Get default network interface
+  shell: ip route | grep default | awk {'print $5'}
+  register: def_inet
+  
+- name: Insert masquerade rules to ufw config
+  become: true
+  blockinfile:
+    path: /etc/ufw/before.rules
+    insertbefore: "^# Don't delete these"
+    state: present
+    content: |
+        # START OPENVPN RULES
+        # NAT table rules
+        *nat
+        :POSTROUTING ACCEPT [0:0] 
+        # Allow traffic from OpenVPN client to {{ def_inet.stdout }}
+        -A POSTROUTING -s 10.8.0.0/8 -o {{ def_inet.stdout }} -j MASQUERADE
+        COMMIT
+        # END OPENVPN RULES
+
+- name: Change default forwarding policy in ufw
+  become: true
+  lineinfile:
+    path: /etc/default/ufw
+    regexp: '^DEFAULT_FORWARD_POLICY'
+    line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+    state: present
+    
+- name: Allow UDP port 1194 on ufw
+  become: true
+  ufw:
+    rule: allow
+    port: 1194
+    proto: udp
+    state: reloaded
+
+- name: Allow OpenSSH on ufw
+  become: true
+  ufw:
+    rule: allow
+    name: OpenSSH
+    state: reloaded
+
+- name: Enable ufw on boot
+  become: true
+  ufw:
+    state: enabled
+
+- name: Start and enable OpenVPN service
+  become: true
+  systemd:
+    name: openvpn@server
+    enabled: yes
+    state: started
+
+- name: Create client configs directory
+  file:
+    path: /home/{{admin_user}}/client-configs
+    state: directory
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: Create client configs output directory
+  file:
+    path: /home/{{admin_user}}/client-configs/files
+    state: directory
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: Create base config
+  template:
+    src: base.conf.j2
+    dest: /home/{{admin_user}}/client-configs/base.conf
+  tags:
+     - test 
+
+- name: Create make_config.sh script
+  template:
+    src: make_config.sh.j2
+    dest: /home/{{admin_user}}/client-configs/make_config.sh
+    mode: 0700
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  tags:
+    - test
+
+- name: Build client configs
+  shell: /home/{{admin_user}}/client-configs/make_config.sh "{{item}}"
+  with_items: "{{ vpn_users }}"
+  tags:
+   - regenerate-clients
+   - test
+
+- name: Fetch client configs (for nixes)
+  fetch:
+    src: /home/{{admin_user}}/client-configs/files/{{item}}.ovpn
+    dest: /tmp/ovpn_configs/
+    fail_on_missing: yes
+  with_items: "{{ vpn_users }}"
+  when: ansible_os_family != "Windows"
+  tags:
+    - regenerate-clients
+    - test
