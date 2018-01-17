@@ -33,7 +33,7 @@
     mode: 0770
 
 - name: Ensure clean environment and build CA, certs and DH params
-  shell: ./build_ca.sh
+  shell: ./build_ca.sh "{{ key_name }}"
   args:
     chdir: /home/{{admin_user}}/openvpn-ca
   tags:
@@ -169,8 +169,6 @@
   template:
     src: base.conf.j2
     dest: /home/{{admin_user}}/client-configs/base.conf
-  tags:
-     - test 
 
 - name: Create make_config.sh script
   template:
@@ -179,15 +177,12 @@
     mode: 0700
     owner: "{{ admin_user }}"
     group: "{{ admin_user }}"
-  tags:
-    - test
 
 - name: Build client configs
   shell: /home/{{admin_user}}/client-configs/make_config.sh "{{item}}"
   with_items: "{{ vpn_users }}"
   tags:
    - regenerate-clients
-   - test
 
 - name: Fetch client configs (for nixes)
   fetch:
@@ -198,4 +193,3 @@
   when: ansible_os_family != "Windows"
   tags:
     - regenerate-clients
-    - test
