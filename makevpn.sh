@@ -1,15 +1,4 @@
-#!/usr/bin/env sh
-SAVPN_REGION=""
-SAVPN_SUBSCRIPTION_ID="" 
-SAVPN_CLIENT_ID=""
-SAVPN_CLIENT_SECRET=""
-SAVPN_TENANT_ID=""
-SAVPN_VM_SIZE=""
-SAVPN_ADMIN_USERNAME=""  
-SAVPN_SSH_KEY=""
-SAVPN_VM_PUBLIC_IP=""
-SAVPN_KEY_COUNTRY=""
-
+#!/usr/bin/env bash
 echo =================================
 echo SimpleAzureVPN wrapper script
 echo Version 0.1
@@ -47,8 +36,9 @@ echo 'Please provide admin username for the VM:'
 read SAVPN_ADMIN_USERNAME
 sed -i '' "s/admin_username/admin_username = \"$SAVPN_ADMIN_USERNAME\"/g" terraform/variables.tf
 echo =================================
-echo 'Please provide SSH public key to be used for admin login:'
-read SAVPN_SSH_KEY
+echo 'A SSH key will be generated for your admin user and placed in ~/.ssh/azurevpn'
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/azurevpn -N ''
+SAVPN_SSH_KEY=$(cat ~/.ssh/azurevpn.pub)
 sed -i '' "s|ssh_key|ssh_key = \"$SAVPN_SSH_KEY\"|g" terraform/variables.tf
 echo =================================
 echo "Terraform will now attempt to create infrastructure."
@@ -58,6 +48,86 @@ terraform plan -out vpn_infra_plan || exit 1
 terraform apply "vpn_infra_plan" || exit 1
 SAVPN_VM_PUBLIC_IP=$(terraform output vpn-machine-ip)
 echo "Infrastructure created."
-cd ../ansible
+rm vpn_infra_plan
+echo =================================
+grep myvpn.azure ~/.ssh/config 2>&1 > /dev/null
+if [ $? -ne 1 ];
+then
+    echo "Replacing remote host 'myvpn.azure' in ssh config"
+    SAVPN_OLDIP=$(grep -v -A1 myvpn.azure ~/.ssh/config | head -1 | awk {'print $2'})
+    sed -i '' "s/Hostname $SAVPN_OLDIP/Hostname $SAVPN_VM_PUBLIC_IP/g" ~/.ssh/config
+else
+    echo "Adding remote host as 'myvpn.azure' to ssh config in ~/.ssh/config"
+    cat >> ~/.ssh/config << EOF
+Host myvpn.azure
+    Hostname $SAVPN_VM_PUBLIC_IP
+    IdentityFile ~/.ssh/azurevpn
+EOF
+fi
+cd ../ansible/roles/openvpn/defaults
+cp main.yml.tpl main.yml
+sed -i '' "s/admin_user:/admin_user: \"$SAVPN_ADMIN_USERNAME\"/g" main.yml
+sed -i '' "s/vm_public_ip:/vm_public_ip: \"$SAVPN_VM_PUBLIC_IP\"/g" main.yml
 echo =================================
 echo "To setup OpenVPN we need some information for certificate generation."
+echo "Country to put in cert (eg. PL, DE, etc.):"
+read SAVPN_KEY_COUNTRY
+sed -i '' "s/key_country:/key_country: \"$SAVPN_KEY_COUNTRY\"/g" main.yml
+echo =================================
+echo "Province to put in cert:"
+read SAVPN_KEY_PROVINCE
+sed -i '' "s/key_province:/key_province: \"$SAVPN_KEY_PROVINCE\"/g" main.yml
+echo =================================
+echo "City to put in cert:"
+read SAVPN_KEY_CITY
+sed -i '' "s/key_city:/key_city: \"$SAVPN_KEY_CITY\"/g" main.yml
+echo =================================
+echo "Organization to put in cert:"
+read SAVPN_KEY_ORG
+sed -i '' "s/key_org:/key_org: \"$SAVPN_KEY_ORG\"/g" main.yml
+echo =================================
+echo "E-mail address to put in cert:"
+read SAVPN_KEY_EMAIL
+sed -i '' "s/key_email:/key_email: \"$SAVPN_KEY_EMAIL\"/g" main.yml
+echo =================================
+echo "Organizational Unit to put in cert (can be whatever really, eg. your name):"
+read SAVPN_KEY_OU
+sed -i '' "s/key_ou:/key_ou: \"$SAVPN_KEY_OU\"/g" main.yml
+echo =================================
+echo "Name to put in cert (can be whatever really, eg. SimpleAzureVPN, myazurevpn etc.):"
+read SAVPN_KEY_NAME
+sed -i '' "s/key_name:/key_name: \"$SAVPN_KEY_NAME\"/g" main.yml
+echo =================================
+echo vpn_users: >> main.yml
+echo -e \
+"Provide list of VPN users that you want to generate configs for.\n\
+Usernames should be separated by spaces."
+read SAVPN_VPN_USERS
+for vpn_user in $SAVPN_VPN_USERS; 
+do
+    echo "Config will be generated for user: $vpn_user"
+    printf "  - $vpn_user\n" >> main.yml
+done
+cd ../../..
+cat > inventory.yml << EOF
+---
+all:
+  hosts:
+    $SAVPN_VM_PUBLIC_IP
+EOF
+echo =================================
+echo "Waiting some time to let server become available."
+sleep 15
+echo =================================
+ssh-keyscan $SAVPN_VM_PUBLIC_IP 2>&1 | grep ecdsa >> ~/.ssh/known_hosts
+ansible-playbook vpn.yml -i inventory.yml --key-file=~/.ssh/azurevpn || exit 1
+echo 'Config files will be placed in your home directory in ovpn_configs subdirectory.'
+mkdir ~/ovpn_configs
+for vpn_user in $SAVPN_VPN_USERS; 
+do
+    cp /tmp/ovpn_configs/$SAVPN_VM_PUBLIC_IP/home/$SAVPN_ADMIN_USERNAME/client-configs/files/$vpn_user.ovpn ~/ovpn_configs/$vpn_user.ovpn
+done
+echo 'All done!'
+echo 'You can access your VM via ssh: ssh myvpn.azure'
+
+
