@@ -5,3 +5,5 @@ variables.tf
 *.retry
 inventory.yml
 ansible/roles/openvpn/defaults/main.yml
+.DS_Store
+test_makevpn.sh

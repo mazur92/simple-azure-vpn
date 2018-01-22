@@ -190,6 +190,5 @@
     dest: /tmp/ovpn_configs/
     fail_on_missing: yes
   with_items: "{{ vpn_users }}"
-  when: ansible_os_family != "Windows"
   tags:
     - regenerate-clients
