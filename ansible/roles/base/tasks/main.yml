@@ -1,0 +1,47 @@
+---
+- name: Install packages
+  apt:
+    name: "{{item}}"
+    update_cache: yes
+  become: true
+  with_items:
+    - fail2ban
+    - unattended-upgrades
+    - ufw
+
+- name: Configure unattended-upgrades
+  become: true
+  copy:
+    src: apt_periodic
+    dest: /etc/apt/apt.conf.d/10periodic
+
+- name: Enable ufw on boot
+  become: true
+  ufw:
+    state: enabled
+  tags:
+    - hardening
+    - firewall
+
+- name: Allow OpenSSH on ufw
+  become: true
+  ufw:
+    rule: allow
+    name: OpenSSH
+    state: reloaded
+  tags:
+    - hardening
+    - firewall
+
+- name: Set ufw to reject incoming connections by default
+  become: true
+  ufw:
+    default: deny
+    direction: incoming
+    proto: any
+    state: reloaded
+  tags:
+    - hardening
+    - firewall
+
+
