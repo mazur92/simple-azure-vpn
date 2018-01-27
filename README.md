@@ -62,6 +62,11 @@ To regenerate (all) clients, enter ansible directory and run this command:
 ansible-playbook vpn.yml -i inventory.yml --key-file=~/.ssh/azurevpn --tags=regenerate-clients
 ```
 
+To regenerate (and/or create new) clients, enter ansible directory and run this command with required changes (note the --extra-vars parameter):
+```
+ansible-playbook vpn.yml -i inventory.yml --key-file=~/.ssh/azurevpn --tags=regenerate-clients --extra-vars='{"vpn_users": [client1, client_new]}'
+```
+
 ## Note about VM size
 
 Standard_B1s vm size is currently subject to Azure Free Trial and is free of charge for 750hr/mo for 12 months. That was the size of VM I was testing on.
@@ -69,6 +74,10 @@ Standard_B1s vm size is currently subject to Azure Free Trial and is free of cha
 ## Note about transfer limits
 
 Please be aware that currently Azure Free Trial allows **15GB** of transfer **out** (subject to change) per month for 12 months. Anything above will be charged.
+
+## Note about hardening
+
+The VPN server created here by default blocks ALL incoming connections, apart from SSH and OpenVPN. It's also configured to be automatically updated once in a while and fail2ban is installed. After that CIS role from Ansible Galaxy is run over the server to comply with standards.
 
 ## Disclaimer
 
