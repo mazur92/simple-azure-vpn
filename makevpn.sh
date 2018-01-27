@@ -120,6 +120,7 @@ echo "Waiting some time to let server become available."
 sleep 15
 echo =================================
 ssh-keyscan $SAVPN_VM_PUBLIC_IP 2>&1 | grep ecdsa >> ~/.ssh/known_hosts
+ansible-galaxy install florianutz.Ubuntu1604-CIS
 ansible-playbook vpn.yml -i inventory.yml --key-file=~/.ssh/azurevpn || exit 1
 echo 'Config files will be placed in your home directory in ovpn_configs subdirectory.'
 mkdir ~/ovpn_configs
