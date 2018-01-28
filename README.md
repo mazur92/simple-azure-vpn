@@ -1,5 +1,5 @@
 # Simple Azure VPN
-
+[![Build Status](https://travis-ci.org/mazur92/simple-azure-vpn.svg?branch=master)](https://travis-ci.org/mazur92/simple-azure-vpn)
 ## Prerequisites
 * Terraform 0.10.8<
 * Ansible 2.4<

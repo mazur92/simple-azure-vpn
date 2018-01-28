@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  remote_user: root
+  become: true
+  roles:
+    - base
+    - openvpn
+  vars_files:
+    - test_vars.yml

@@ -27,7 +27,8 @@
   become: true
   ufw:
     rule: allow
-    name: OpenSSH
+    port: 22
+    proto: tcp
     state: reloaded
   tags:
     - hardening
