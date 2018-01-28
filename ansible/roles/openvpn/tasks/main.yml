@@ -93,10 +93,14 @@
     sysctl_set: yes
     state: present
     reload: yes
+  tags:
+    - firewall
 
 - name: Get default network interface
   shell: ip route | grep default | awk {'print $5'}
   register: def_inet
+  tags:
+    - firewall
   
 - name: Insert masquerade rules to ufw config
   become: true
@@ -113,6 +117,8 @@
         -A POSTROUTING -s 10.8.0.0/8 -o {{ def_inet.stdout }} -j MASQUERADE
         COMMIT
         # END OPENVPN RULES
+  tags:
+    - firewall
 
 - name: Change default forwarding policy in ufw
   become: true
@@ -121,6 +127,8 @@
     regexp: '^DEFAULT_FORWARD_POLICY'
     line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
     state: present
+  tags:
+    - firewall
     
 - name: Allow UDP port 1194 on ufw
   become: true
@@ -129,19 +137,9 @@
     port: 1194
     proto: udp
     state: reloaded
-
-- name: Allow OpenSSH on ufw
-  become: true
-  ufw:
-    rule: allow
-    name: OpenSSH
-    state: reloaded
-
-- name: Enable ufw on boot
-  become: true
-  ufw:
-    state: enabled
-
+  tags:
+    - firewall
+  
 - name: Start and enable OpenVPN service
   become: true
   systemd:
@@ -190,5 +188,6 @@
     dest: /tmp/ovpn_configs/
     fail_on_missing: yes
   with_items: "{{ vpn_users }}"
+  when: not_test == "true"
   tags:
     - regenerate-clients
