@@ -10,6 +10,8 @@ services:
 
 before_install:
   - 'sudo docker pull ${distribution}:${version}'
+  - 'pwd'
+  - 'ls -la'
   - 'sudo docker build --no-cache --rm --file=travis/Dockerfile.${distribution}-${version} --tag=${distribution}-${version}:ansible travis'
 
 script:
