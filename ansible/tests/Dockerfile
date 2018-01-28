@@ -10,4 +10,6 @@ RUN apt-add-repository -y ppa:ansible/ansible && apt-get update && apt-get insta
 
 RUN echo "[local]\nlocalhost ansible_connection=local" > /etc/ansible/hosts
 
+EXPOSE 22 1194
+
 ENTRYPOINT ["/sbin/init"]
