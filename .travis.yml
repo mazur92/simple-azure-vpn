@@ -2,8 +2,8 @@
 sudo: required
 
 env:
-  - distribution: solita/ubuntu-systemd
-    version: 16.04
+  - distribution: ubuntu
+    version: xenial
 
 services:
   - docker
