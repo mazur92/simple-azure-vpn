@@ -1,0 +1,13 @@
+---
+admin_user: "vpn_admin" 
+key_country: "PL" 
+key_province: "Mazowieckie" 
+key_city: "Warszawa" 
+key_org: "VPN ORG"
+key_email: "vpn_admin@mail.com"
+key_ou: "VPN ORG OU" 
+key_name: "SimpleAzureVPN"
+vm_public_ip: "1.2.3.4"
+vpn_users:
+  - client1
+  - client2

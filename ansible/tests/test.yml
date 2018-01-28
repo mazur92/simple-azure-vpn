@@ -4,3 +4,5 @@
   roles:
     - base
     - openvpn
+  vars_files:
+    - test_vars.yml

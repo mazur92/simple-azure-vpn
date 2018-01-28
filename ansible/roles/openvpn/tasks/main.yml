@@ -188,5 +188,6 @@
     dest: /tmp/ovpn_configs/
     fail_on_missing: yes
   with_items: "{{ vpn_users }}"
+  when: not_test == "true"
   tags:
     - regenerate-clients
