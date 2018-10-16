@@ -1,12 +1,9 @@
 ---
 - name: Install openvpn packages
   apt:
-    name: "{{item}}"
+    name: ['openvpn', 'easy-rsa']
     update_cache: yes
   become: true
-  with_items:
-    - openvpn
-    - easy-rsa
 
 - name: Create CA directory
   command: make-cadir /home/{{admin_user}}/openvpn-ca
@@ -188,6 +185,7 @@
     dest: /tmp/ovpn_configs/
     fail_on_missing: yes
   with_items: "{{ vpn_users }}"
-  when: not_test == "true"
+  when: not_test == true
   tags:
     - regenerate-clients
+    - fetch-configs
