@@ -50,10 +50,11 @@ You should receive similar response:
 
 Now that you have all the details needed, all you need to do is run makevpn.sh from the repo main directory. It will ask for some details, generate ssh keypair for connecting to your server, deploy infrastructure using Terraform, add your new server to your ssh config, provision with Ansible and copy clients configs over to your home directory.
 
-You can also fill out all the details in batch_makevpn.sh and invoke both scripts like this to avoid step-by-step details filling:
+You can also fill out all the details in batch_makevpn.sh (variable names should be descriptive enough) and just invoke ./makevpn.sh to avoid step-by-step details filling:
 ```
-./batch_makevpn.sh | ./makevpn.sh
+./makevpn.sh
 ```
+It will source variables automatically from the batch_makevpn.sh
 
 ## Clients regeneration
 

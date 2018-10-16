@@ -1,13 +1,9 @@
 ---
 - name: Install packages
   apt:
-    name: "{{item}}"
+    name: ['fail2ban', 'unattended-upgrades', 'ufw']
     update_cache: yes
   become: true
-  with_items:
-    - fail2ban
-    - unattended-upgrades
-    - ufw
 
 - name: Configure unattended-upgrades
   become: true
