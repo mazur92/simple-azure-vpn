@@ -2,6 +2,12 @@
  - name: Set up VPN in Azure
    hosts: all
    roles:
-    - { role: base, tags: base }
-    - { role: openvpn, tags: openvpn }
-    - { role: florianutz.Ubuntu1604-CIS, ubuntu1604cis_is_router: true, ubuntu1604cis_rule_3_4_2: false, ubuntu1604cis_rule_3_4_3: false, tags: cis, hardening }
+    - role: base
+      tags: base
+    - role: openvpn
+      tags: openvpn
+    - role: florianutz.Ubuntu1604-CIS 
+      ubuntu1604cis_is_router: true
+      ubuntu1604cis_rule_3_4_2: false
+      ubuntu1604cis_rule_3_4_3: false
+      tags: cis, hardening
